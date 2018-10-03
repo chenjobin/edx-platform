@@ -4,6 +4,7 @@ import json
 import unittest
 from datetime import datetime
 from importlib import import_module
+import unicodedata
 
 import ddt
 import mock
@@ -14,6 +15,7 @@ from django.urls import reverse
 from django.test import TestCase, TransactionTestCase
 from django.test.client import RequestFactory
 from django.test.utils import override_settings
+from django.contrib.auth.hashers import make_password
 
 from django_comment_common.models import ForumsConfig
 from notification_prefs import NOTIFICATION_PREF_KEY
@@ -129,6 +131,18 @@ class TestCreateAccount(SiteMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         user = User.objects.get(username=self.username)
         return user.profile
+
+    def test_create_account_and_normalize_password(self, host='microsite.example.com'):
+
+        self.params['password'] = unicodedata.normalize('NFKD', u'Ṗŕệṿïệẅ Ṯệẍt')
+        response = self.client.post(self.url, self.params, HTTP_HOST=host)
+        self.assertEqual(response.status_code, 200)
+
+        user = User.objects.get(username=self.username)
+        salt_val = user.password.split('$')[1]
+
+        user_hashed_password = make_password(unicodedata.normalize('NFKC',u'Ṗŕệṿïệẅ Ṯệẍt'), salt_val)
+        self.assertEqual(user_hashed_password, user.password)
 
     def test_marketing_cookie(self):
         response = self.client.post(self.url, self.params)
