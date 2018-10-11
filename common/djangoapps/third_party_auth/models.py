@@ -595,6 +595,24 @@ class SAMLProviderConfig(ProviderConfig):
         null=True,
         blank=True,
     )
+    default_user_permanent_id = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for User ID",
+        help_text="Default value for user permanent ID to be used if not present in SAML response.")
+    default_full_name = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for Full Name",
+        help_text="Default value for full name to be used if not present in SAML response.")
+    default_first_name = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for First Name",
+        help_text="Default value for first name to be used if not present in SAML response.")
+    default_last_name = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for Last Name",
+        help_text="Default value for last name to be used if not present in SAML response.")
+    default_username = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for Username",
+        help_text="Default value for username to be used if not present in SAML response.")
+    default_email = models.CharField(
+        max_length=128, blank=True, verbose_name="Default Value for Email",
+        help_text="Default value for email to be used if not present in SAML response.")
 
     def clean(self):
         """ Standardize and validate fields """
@@ -643,10 +661,25 @@ class SAMLProviderConfig(ProviderConfig):
         attrs = (
             'attr_user_permanent_id', 'attr_full_name', 'attr_first_name',
             'attr_last_name', 'attr_username', 'attr_email', 'entity_id')
+        attr_defaults = {
+            'attr_user_permanent_id': 'default_user_permanent_id',
+            'attr_full_name': 'default_full_name',
+            'attr_first_name': 'default_first_name',
+            'attr_last_name': 'default_last_name',
+            'attr_username': 'default_username',
+            'attr_email': 'default_email',
+        }
+
+        # Defaults for missing attributes in SAML Response
+        conf['attr_defaults'] = {}
+
         for field in attrs:
+            field_name  = attr_defaults.get(field)
             val = getattr(self, field)
+            default = getattr(self, field_name) if field_name else None
             if val:
                 conf[field] = val
+                conf['attr_defaults'][field] = default
         # Now get the data fetched automatically from the metadata.xml:
         data = SAMLProviderData.current(self.entity_id)
         if not data or not data.is_valid():
